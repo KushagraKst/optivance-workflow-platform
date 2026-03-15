@@ -1,0 +1,11 @@
+CREATE TABLE users(
+id INT PRIMARY KEY,
+name VARCHAR(50),
+email VARCHAR(50)
+);
+
+CREATE TABLE tasks(
+id INT PRIMARY KEY,
+title VARCHAR(100),
+status VARCHAR(20)
+);

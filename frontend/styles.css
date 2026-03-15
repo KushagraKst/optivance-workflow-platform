@@ -1,0 +1,24 @@
+body{
+font-family: Arial;
+text-align:center;
+background: linear-gradient(135deg,#667eea,#764ba2);
+color:white;
+}
+
+.container{
+margin-top:150px;
+}
+
+button{
+padding:15px 25px;
+font-size:18px;
+border:none;
+border-radius:8px;
+background:white;
+color:black;
+cursor:pointer;
+}
+
+.task-container{
+margin-top:40px;
+}

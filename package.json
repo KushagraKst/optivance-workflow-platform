@@ -1,0 +1,9 @@
+{
+"name": "optivance",
+"version": "1.0.0",
+"description": "Workflow automation platform",
+"main": "server.js",
+"dependencies": {
+"express": "^4.18.2"
+}
+}
