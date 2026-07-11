@@ -1,0 +1,22 @@
+# Python / Flask project ignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+*.env
+instance/
+*.db
+.DS_Store
+.idea/
+.vscode/
+*.sqlite3
+*.log
+.pytest_cache/
+build/
+
+# Docker artefacts
+Dockerfile
+Dockerfile.dev
+.dockerignore

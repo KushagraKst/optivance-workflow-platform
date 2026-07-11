@@ -1,0 +1,194 @@
+{% extends "app_layout.html" %}
+
+{% block title %}Data — Optivance Platform{% endblock %}
+{% block page_title %}Data{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
+    .page-title  { font-size: 1.5rem; font-weight: 600; margin-bottom: .25rem; }
+    .page-subtitle { color: var(--text-muted); font-size: .9rem; }
+
+    .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+    /* Form card */
+    .form-card { padding: 1.75rem; }
+    .form-card-title { font-weight: 600; font-size: 1.1rem; margin-bottom: 1.25rem; }
+
+    .row-inputs { display: flex; gap: .75rem; align-items: center; margin-bottom: .75rem; }
+    .row-inputs input {
+        flex: 1; background: #1e263c; border: 1px solid var(--border-color);
+        border-radius: var(--radius-md); padding: .65rem 1rem; color: var(--text-main);
+        font-family: inherit; font-size: .88rem; outline: none; transition: var(--transition);
+    }
+    .row-inputs input:focus { border-color: var(--primary); }
+
+    .btn-icon {
+        width: 36px; height: 36px; border-radius: var(--radius-md); border: 1px solid var(--border-color);
+        background: transparent; color: var(--text-muted); cursor: pointer; display: flex;
+        align-items: center; justify-content: center; transition: var(--transition); flex-shrink: 0;
+    }
+    .btn-icon:hover { background: rgba(255,255,255,.05); color: var(--text-main); }
+    .btn-icon.danger:hover { background: rgba(239,68,68,.1); color: #ef4444; }
+
+    .btn-submit {
+        width: 100%; padding: .75rem; background: var(--primary); color: white;
+        border: none; border-radius: var(--radius-md); font-family: inherit;
+        font-size: .9rem; font-weight: 600; cursor: pointer; transition: var(--transition);
+        margin-top: .5rem;
+    }
+    .btn-submit:hover { background: #4338ca; }
+
+    /* History card */
+    .history-card { padding: 1.75rem; }
+    .history-title { font-weight: 600; font-size: 1.1rem; margin-bottom: 1.25rem; }
+
+    .ht { width: 100%; border-collapse: collapse; }
+    .ht th {
+        text-align: left; font-size: .72rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: .5px; color: var(--text-muted); padding: .75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .ht td { padding: .75rem 1rem; border-bottom: 1px solid var(--border-color); font-size: .88rem; }
+    .ht tr:hover td { background: rgba(255,255,255,.02); }
+
+    /* Toast */
+    .toast {
+        position: fixed; bottom: 2rem; right: 2rem; padding: 1rem 1.5rem;
+        border-radius: var(--radius-md); font-size: .88rem; font-weight: 500;
+        z-index: 999; opacity: 0; transition: opacity .3s;
+    }
+    .toast.show { opacity: 1; }
+    .toast.success { background: rgba(16,185,129,.15); color: #10b981; border: 1px solid rgba(16,185,129,.3); }
+    .toast.error   { background: rgba(239,68,68,.15);  color: #ef4444; border: 1px solid rgba(239,68,68,.3); }
+</style>
+{% endblock %}
+
+{% block app_content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Data Management</h1>
+        <p class="page-subtitle">Upload and view your data points for analytics.</p>
+    </div>
+</div>
+
+<div class="data-grid">
+    <!-- Insert Form -->
+    <div class="card form-card">
+        <div class="form-card-title">Add Data Points</div>
+        <div id="rows-container">
+            <div class="row-inputs">
+                <input type="number" placeholder="Value" class="val-input">
+                <input type="date" class="date-input">
+                <button class="btn-icon danger" onclick="this.parentElement.remove()" title="Remove row">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+        <div style="display:flex; gap:.75rem; margin-top:.75rem;">
+            <button class="btn-icon" onclick="addRow()" title="Add row" style="flex-shrink:0;">
+                <i class="fa-solid fa-plus"></i>
+            </button>
+            <button class="btn-submit" onclick="submitData()">
+                <i class="fa-solid fa-cloud-arrow-up" style="margin-right:6px;"></i> Upload Data
+            </button>
+        </div>
+    </div>
+
+    <!-- History -->
+    <div class="card history-card">
+        <div class="history-title">Upload History</div>
+        <table class="ht">
+            <thead><tr><th>Value</th><th>Date</th></tr></thead>
+            <tbody id="history-tbody">
+                <tr><td colspan="2" style="text-align:center; color:var(--text-muted);">Loading…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const uid = '{{ session.get("user_id") }}';
+
+function addRow() {
+    const container = document.getElementById('rows-container');
+    const row = document.createElement('div');
+    row.className = 'row-inputs';
+    row.innerHTML = `
+        <input type="number" placeholder="Value" class="val-input">
+        <input type="date" class="date-input">
+        <button class="btn-icon danger" onclick="this.parentElement.remove()" title="Remove row">
+            <i class="fa-solid fa-xmark"></i>
+        </button>`;
+    container.appendChild(row);
+}
+
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast show ${type}`;
+    setTimeout(() => t.className = 'toast', 3000);
+}
+
+async function submitData() {
+    const rows = document.querySelectorAll('.row-inputs');
+    const data = [];
+    rows.forEach(r => {
+        const v = r.querySelector('.val-input').value;
+        const d = r.querySelector('.date-input').value;
+        if (v && d) data.push({ value: parseFloat(v), date: d });
+    });
+
+    if (!data.length) { showToast('Please fill in at least one row.', 'error'); return; }
+
+    try {
+        const res = await fetch('/upload-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: uid, data })
+        });
+        const json = await res.json();
+        if (res.ok) {
+            showToast(`✓ ${data.length} data point(s) uploaded!`, 'success');
+            loadHistory();
+            // Reset form
+            document.getElementById('rows-container').innerHTML = `
+                <div class="row-inputs">
+                    <input type="number" placeholder="Value" class="val-input">
+                    <input type="date" class="date-input">
+                    <button class="btn-icon danger" onclick="this.parentElement.remove()" title="Remove row">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>`;
+        } else {
+            showToast(json.message || 'Upload failed', 'error');
+        }
+    } catch(e) {
+        showToast('Network error: ' + e.message, 'error');
+    }
+}
+
+async function loadHistory() {
+    try {
+        const res = await fetch(`/get-data/${uid}`);
+        const data = await res.json();
+        const tbody = document.getElementById('history-tbody');
+
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--text-muted);">No data points yet. Upload some above!</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(d => `<tr><td>${d.value}</td><td>${d.date}</td></tr>`).join('');
+    } catch(e) {
+        document.getElementById('history-tbody').innerHTML =
+            '<tr><td colspan="2" style="text-align:center; color:#ef4444;">Error loading history</td></tr>';
+    }
+}
+
+loadHistory();
+</script>
+{% endblock %}

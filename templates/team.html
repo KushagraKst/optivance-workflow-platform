@@ -1,0 +1,92 @@
+{% extends "app_layout.html" %}
+
+{% block title %}Team Management - Optivance Platform{% endblock %}
+{% block page_title %}Team Management{% endblock %}
+
+{% block app_content %}
+<div class="card" style="padding: 2rem; margin-bottom: 2rem;">
+    <h2>Manage Your Team</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Generate an invite link to send to your team members.</p>
+    
+    <button id="generate-invite" class="btn" style="background: var(--primary); color: white; padding: 0.75rem 1.5rem; border: none; border-radius: var(--radius-md); cursor: pointer;">
+        Generate Invite Link
+    </button>
+    
+    <div id="invite-result" style="margin-top: 1rem; display: none;">
+        <p style="color: #10b981; font-weight: 600;">Invite Link Generated! Share this link with your team member:</p>
+        <input type="text" id="invite-url" readonly style="width: 100%; padding: 0.75rem; background: #1a1f30; border: 1px solid var(--border-color); color: var(--text-main); border-radius: var(--radius-md); margin-top: 0.5rem;">
+    </div>
+</div>
+
+<div class="card" style="padding: 2rem;">
+    <h3>Current Team Members</h3>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+        <thead>
+            <tr style="border-bottom: 1px solid var(--border-color); text-align: left; color: var(--text-muted);">
+                <th style="padding: 1rem;">Name</th>
+                <th style="padding: 1rem;">Email</th>
+                <th style="padding: 1rem;">Role</th>
+            </tr>
+        </thead>
+        <tbody id="team-members">
+            <!-- Members will be loaded here -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const teamId = "{{ session.get('team_id') }}";
+    
+    // Fetch members
+    fetch('/team/members?team_id=' + teamId)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.getElementById('team-members');
+            tbody.innerHTML = '';
+            data.forEach(member => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid var(--border-color)';
+                tr.innerHTML = `
+                    <td style="padding: 1rem;">${member.name}</td>
+                    <td style="padding: 1rem;">${member.email}</td>
+                    <td style="padding: 1rem;">
+                        <span style="background: ${member.role === 'team_leader' ? 'rgba(56,189,248,0.1)' : 'rgba(16,185,129,0.1)'}; color: ${member.role === 'team_leader' ? '#38bdf8' : '#10b981'}; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">
+                            ${member.role.replace('_', ' ').toUpperCase()}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+
+    // Generate Invite
+    document.getElementById('generate-invite').addEventListener('click', function() {
+        // We will fetch the user's company_id from an endpoint or session, but let's just let the backend infer it, or we pass it if we have it in session. Wait, we don't have company_id in session yet. Let's add it to session in app.py later, or just look it up in the backend using team_id. Wait, our /team/invite endpoint expects company_id and team_id.
+        // Let's modify the frontend to send just what it has, but let's pass company_id too. We'll update app.py to put company_id in session.
+        
+        const payload = {
+            company_id: parseInt("{{ session.get('company_id', 0) }}"),
+            team_id: parseInt("{{ session.get('team_id', 0) }}"),
+            user_role: "{{ session.get('user_role') }}"
+        };
+        
+        fetch('/team/invite', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.url) {
+                document.getElementById('invite-result').style.display = 'block';
+                const fullUrl = window.location.origin + data.url;
+                document.getElementById('invite-url').value = fullUrl;
+            } else {
+                alert('Error generating invite');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

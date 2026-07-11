@@ -1,0 +1,311 @@
+{% extends "app_layout.html" %}
+
+{% block title %}Tasks - Optivance Platform{% endblock %}
+{% block page_title %}Tasks{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
+    .page-title  { font-size: 1.5rem; font-weight: 600; margin-bottom: .25rem; }
+    .page-subtitle { color: var(--text-muted); font-size: .9rem; }
+
+    .tasks-table { width: 100%; border-collapse: collapse; }
+    .tasks-table th { text-align: left; padding: 1rem; color: var(--text-muted); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border-color); }
+    .tasks-table td { padding: 1rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; font-size: .85rem; }
+    .tasks-table tr:last-child td { border-bottom: none; }
+    .tasks-table tr:hover td { background: rgba(255,255,255,.02); }
+
+    .task-title { font-weight: 500; font-size: .95rem; margin-bottom: .15rem; }
+    .task-desc  { color: var(--text-muted); font-size: .72rem; }
+
+    .badge { display: inline-flex; align-items: center; padding: .25rem .65rem; border-radius: 999px; font-size: .72rem; font-weight: 500; }
+    .badge-todo       { background: rgba(148,163,184,.1); color: #94a3b8; border: 1px solid rgba(148,163,184,.2); }
+    .badge-inprogress,
+    .badge-pending    { background: rgba(79,70,229,.15);  color: #818cf8; border: 1px solid rgba(79,70,229,.3); }
+    .badge-done       { background: rgba(16,185,129,.1);  color: #10b981; border: 1px solid rgba(16,185,129,.2); }
+    .badge-high   { background: rgba(239,68,68,.1);   color: #ef4444; border: 1px solid rgba(239,68,68,.25); }
+    .badge-medium { background: rgba(245,158,11,.1);  color: #f59e0b; border: 1px solid rgba(245,158,11,.25); }
+    .badge-low    { background: rgba(16,185,129,.1);  color: #10b981; border: 1px solid rgba(16,185,129,.25); }
+
+    .action-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); height: 32px; border-radius: var(--radius-md); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: var(--transition); margin-right: .25rem; padding: 0 .65rem; font-family: inherit; font-size: .78rem; }
+    .action-btn:hover  { background: rgba(255,255,255,.05); }
+    .btn-done   { background: var(--primary); border-color: var(--primary); color: white; }
+    .btn-done:hover   { background: #4338ca; }
+    .btn-delete { color: #ef4444; border-color: rgba(239,68,68,.3); }
+    .btn-delete:hover { background: rgba(239,68,68,.1); }
+
+    /* ── Modal ───────────────────────────────── */
+    .modal-overlay {
+        display: none; position: fixed; inset: 0; z-index: 100;
+        background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+        align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; animation: fadeIn .2s ease; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal {
+        background: #151a2a; border: 1px solid var(--border-color);
+        border-radius: var(--radius-xl); padding: 2rem; width: 100%; max-width: 460px;
+        animation: scaleIn .2s cubic-bezier(.16,1,.3,1);
+    }
+    @keyframes scaleIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .modal-title  { font-size: 1.1rem; font-weight: 600; }
+    .modal-close  { background: transparent; border: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer; transition: color .2s; }
+    .modal-close:hover { color: var(--text-main); }
+
+    .form-group { margin-bottom: 1.25rem; }
+    .form-label { display: block; font-size: .78rem; font-weight: 500; color: var(--text-muted); margin-bottom: .4rem; text-transform: uppercase; letter-spacing: .5px; }
+    .form-input { width: 100%; padding: .75rem 1rem; background: #1a1f30; border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--text-main); font-family: inherit; font-size: .9rem; outline: none; transition: border-color .2s; }
+    .form-input:focus { border-color: var(--primary); }
+    .form-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.6); }
+
+    .modal-actions { display: flex; gap: 1rem; margin-top: 1.5rem; }
+    .btn-cancel { flex: 1; padding: .75rem; background: transparent; border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--text-muted); cursor: pointer; font-family: inherit; font-size: .9rem; transition: var(--transition); }
+    .btn-cancel:hover { background: rgba(255,255,255,.05); color: var(--text-main); }
+    .btn-submit { flex: 1; padding: .75rem; background: var(--primary); border: none; border-radius: var(--radius-md); color: white; cursor: pointer; font-family: inherit; font-size: .9rem; font-weight: 600; transition: var(--transition); }
+    .btn-submit:hover { background: #4338ca; }
+
+    .toast { display: none; position: fixed; bottom: 2rem; right: 2rem; padding: .875rem 1.25rem; border-radius: var(--radius-md); font-size: .875rem; font-weight: 500; z-index: 200; }
+    .toast.success { background: rgba(16,185,129,.15); border: 1px solid rgba(16,185,129,.3); color: #10b981; }
+    .toast.error   { background: rgba(239,68,68,.15);  border: 1px solid rgba(239,68,68,.3);  color: #ef4444; }
+
+    .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-xl); }
+    .empty-state { text-align: center; padding: 3rem; color: var(--text-muted); font-size: .9rem; }
+    .empty-state i { font-size: 2rem; display: block; margin-bottom: .75rem; opacity: .4; }
+</style>
+{% endblock %}
+
+{% block app_content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Task Management</h1>
+        <p class="page-subtitle">Organize, assign and track your team's work.</p>
+    </div>
+    {% if session.get('user_role') in ['team_leader', 'app_admin'] %}
+    <button class="btn btn-primary" onclick="openModal()">
+        <i class="fa-solid fa-plus" style="margin-right:6px;"></i> New Task
+    </button>
+    {% endif %}
+</div>
+
+<!-- Table -->
+<div class="card">
+    <table class="tasks-table">
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Due Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tasks-tbody">
+            <tr><td colspan="5" class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i>Loading…</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- New Task Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeOnBg(event)">
+    <div class="modal" id="modal">
+        <div class="modal-header">
+            <span class="modal-title">Create New Task</span>
+            <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Task Title *</label>
+            <input type="text" id="task-title" class="form-input" placeholder="e.g. Review Q2 report" autofocus>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select id="task-status" class="form-input">
+                    <option value="todo">Todo</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="done">Done</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Priority</label>
+                <select id="task-priority" class="form-input">
+                    <option value="high">🔴 High</option>
+                    <option value="medium" selected>🟡 Medium</option>
+                    <option value="low">🟢 Low</option>
+                </select>
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div class="form-group">
+                <label class="form-label">Due Date</label>
+                <input type="date" id="task-due" class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Assign To</label>
+                <select id="task-assignee" class="form-input">
+                    <option value="">Loading members...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn-submit" onclick="createTask()">
+                <i class="fa-solid fa-plus" style="margin-right:6px;"></i> Create Task
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const USER_ID = "{{ session.get('user_id') }}";
+const USER_ROLE = "{{ session.get('user_role') }}";
+const TEAM_ID = "{{ session.get('team_id') }}";
+const USERNAME = "{{ session.get('user_name') or session.get('user_email', '').split('@')[0] }}";
+
+/* ── Modal ─────────────────────────────── */
+function openModal() {
+    document.getElementById('modal-overlay').classList.add('open');
+    document.getElementById('task-title').focus();
+    
+    // Load team members for assignment
+    fetch('/team/members?team_id=' + TEAM_ID)
+        .then(r => r.json())
+        .then(data => {
+            const select = document.getElementById('task-assignee');
+            select.innerHTML = '<option value="">Unassigned</option>';
+            data.forEach(m => {
+                select.innerHTML += `<option value="${m.id}">${m.name} (${m.role.replace('_',' ')})</option>`;
+            });
+        });
+}
+function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+    document.getElementById('task-title').value = '';
+    document.getElementById('task-status').value = 'todo';
+    document.getElementById('task-due').value = '';
+}
+function closeOnBg(e) {
+    if (e.target.id === 'modal-overlay') closeModal();
+}
+
+/* ── Toast ─────────────────────────────── */
+function toast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + type;
+    t.style.display = 'block';
+    clearTimeout(t._t);
+    t._t = setTimeout(() => t.style.display = 'none', 3500);
+}
+
+/* ── Status badge ──────────────────────── */
+function statusBadge(status) {
+    const s = (status || 'todo').toLowerCase();
+    let cls = 'badge-todo';
+    if (s === 'done') cls = 'badge-done';
+    else if (s === 'in-progress' || s === 'pending') cls = 'badge-inprogress';
+    return `<span class="badge ${cls}">${status}</span>`;
+}
+
+function priorityBadge(priority) {
+    const p = (priority || 'medium').toLowerCase();
+    const icons = { high: '↑', medium: '→', low: '↓' };
+    return `<span class="badge badge-${p}">${icons[p] || ''} ${p}</span>`;
+}
+
+/* ── Render rows ───────────────────────── */
+function renderTasks(data) {
+    const tbody = document.getElementById('tasks-tbody');
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5">
+            <div class="empty-state">
+                <i class="fa-solid fa-inbox"></i>
+                No tasks yet — click <strong>New Task</strong> to create one!
+            </div></td></tr>`;
+        return;
+    }
+    tbody.innerHTML = data.map(t => `
+        <tr id="row-${t.id}">
+            <td>
+                <div class="task-title">${t.title}</div>
+                <div class="task-desc">Assigned to: ${t.assignee}</div>
+            </td>
+            <td>${statusBadge(t.status)}</td>
+            <td>${priorityBadge(t.priority)}</td>
+            <td style="color:var(--text-muted);">${t.due_date || '—'}</td>
+            <td>
+                ${t.status !== 'done' ? `<button class="action-btn btn-done" onclick="markDone(${t.id})">
+                    <i class="fa-solid fa-check" style="margin-right:4px;"></i> Done
+                </button>` : ''}
+                ${['team_leader', 'app_admin'].includes(USER_ROLE) ? `<button class="action-btn btn-delete" onclick="deleteTask(${t.id})" title="Delete">
+                    <i class="fa-solid fa-trash"></i>
+                </button>` : ''}
+            </td>
+        </tr>`).join('');
+}
+
+/* ── Load tasks ────────────────────────── */
+function loadTasks() {
+    fetch('/tasks?user_id=' + USER_ID + '&user_role=' + USER_ROLE + '&team_id=' + TEAM_ID)
+    .then(r => r.json())
+    .then(renderTasks)
+    .catch(() => toast('Failed to load tasks.', 'error'));
+}
+
+/* ── Create task ───────────────────────── */
+function createTask() {
+    const title    = document.getElementById('task-title').value.trim();
+    const status   = document.getElementById('task-status').value;
+    const priority = document.getElementById('task-priority').value;
+    const due      = document.getElementById('task-due').value;
+    const assigned_to = document.getElementById('task-assignee') ? document.getElementById('task-assignee').value : null;
+
+    if (!title) { toast('Title is required.', 'error'); return; }
+
+    fetch('/tasks/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: USER_ID, user_role: USER_ROLE, team_id: TEAM_ID, assigned_to: assigned_to, title, status, priority, due_date: due || null })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) { toast(d.error, 'error'); return; }
+        toast('Task created!');
+        closeModal();
+        loadTasks();
+    })
+    .catch(() => toast('Network error.', 'error'));
+}
+
+/* ── Mark done ─────────────────────────── */
+function markDone(id) {
+    fetch(`/tasks/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: USER_ID, status: 'done' })
+    })
+    .then(r => r.json())
+    .then(() => { toast('Marked as done!'); loadTasks(); })
+    .catch(() => toast('Failed to update task.', 'error'));
+}
+
+/* ── Delete task ───────────────────────── */
+function deleteTask(id) {
+    if (!confirm('Delete this task?')) return;
+    fetch(`/tasks/${id}?user_id=${USER_ID}&user_role=${USER_ROLE}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(() => { toast('Task deleted.'); loadTasks(); })
+    .catch(() => toast('Failed to delete task.', 'error'));
+}
+
+document.addEventListener('DOMContentLoaded', loadTasks);
+</script>
+{% endblock %}

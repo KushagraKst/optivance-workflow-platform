@@ -1,0 +1,189 @@
+{% extends "app_layout.html" %}
+
+{% block title %}Analytics — Optivance Platform{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+    .page-header   { margin-bottom: 2rem; }
+    .page-title    { font-size: 1.5rem; font-weight: 600; margin-bottom: .25rem; }
+    .page-subtitle { color: var(--text-muted); font-size: .9rem; }
+
+    /* Stat cards */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; margin-bottom: 2rem; }
+    .stat-card  { padding: 1.5rem; position: relative; overflow: hidden; }
+    .stat-bg    { position: absolute; top: -20px; right: -20px; width: 80px; height: 80px;
+                  border-radius: 50%; background: rgba(129,140,248,.06); }
+    .stat-title { font-size: .72rem; font-weight: 600; text-transform: uppercase;
+                  letter-spacing: .5px; color: var(--text-muted); margin-bottom: .5rem; }
+    .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--text-main); }
+    .stat-sub   { font-size: .78rem; color: var(--text-muted); margin-top: .35rem; }
+
+    /* Insight cards */
+    .insights-row  { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+    .insight-card  { padding: 1.5rem; }
+    .insight-title { font-weight: 600; margin-bottom: 1rem; font-size: 1rem; }
+    .insight-label { font-size: .78rem; color: var(--text-muted); margin-bottom: .25rem; }
+    .insight-val   { font-size: 1.1rem; font-weight: 600; margin-bottom: .75rem; }
+
+    .trend-up   { color: #10b981; }
+    .trend-down { color: #ef4444; }
+    .trend-flat { color: #f59e0b; }
+
+    /* Sparkline canvas */
+    .sparkline-wrap { margin-top: 1rem; }
+    .sparkline-wrap canvas { width: 100%; height: 80px; }
+
+
+</style>
+{% endblock %}
+
+{% block app_content %}
+<div class="page-header">
+    <h1 class="page-title">Analytics</h1>
+    <p class="page-subtitle">Data-driven insights from your uploaded data points.</p>
+</div>
+
+<!-- Stat Row -->
+<div class="stats-grid">
+    <div class="card stat-card">
+        <div class="stat-bg"></div>
+        <div class="stat-title">Total Data Volume</div>
+        <div class="stat-value" id="stat-total">--</div>
+        <div class="stat-sub" id="stat-count">-- entries</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-bg"></div>
+        <div class="stat-title">Average Value</div>
+        <div class="stat-value" id="stat-avg">--</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-bg"></div>
+        <div class="stat-title">Value Range</div>
+        <div class="stat-value" id="stat-range">--</div>
+        <div class="stat-sub" id="stat-range-detail"></div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-bg"></div>
+        <div class="stat-title">Growth Rate</div>
+        <div class="stat-value" id="stat-growth">--</div>
+    </div>
+</div>
+
+<!-- Insight Row -->
+<div class="insights-row">
+    <div class="card insight-card">
+        <div class="insight-title">Trend & Change</div>
+        <div class="insight-label">Current Trend</div>
+        <div class="insight-val" id="ins-trend">--</div>
+        <div class="insight-label">Latest Change</div>
+        <div class="insight-val" id="ins-change">--</div>
+        <div class="insight-label">Latest → Previous</div>
+        <div class="insight-val" id="ins-latprev">--</div>
+    </div>
+
+    <div class="card insight-card">
+        <div class="insight-title">Data Sparkline</div>
+        <div class="sparkline-wrap">
+            <canvas id="sparkline"></canvas>
+        </div>
+        <div class="stat-sub" style="margin-top:.75rem; text-align:center;" id="sparkline-label">Loading chart data…</div>
+    </div>
+</div>
+
+
+
+<script>
+const uid = '{{ session.get("user_id") }}';
+
+async function loadAnalytics() {
+    try {
+        const res  = await fetch(`/analytics?user_id=${uid}`);
+        const data = await res.json();
+
+        document.getElementById('stat-total').textContent = data.total ?? '--';
+        document.getElementById('stat-count').textContent = `${data.count ?? 0} entries`;
+        document.getElementById('stat-avg').textContent   = data.average ?? '--';
+        document.getElementById('stat-range').textContent  = `${data.min_value ?? 0} – ${data.max_value ?? 0}`;
+        document.getElementById('stat-range-detail').textContent = `Min: ${data.min_value ?? 0} · Max: ${data.max_value ?? 0}`;
+        
+        const gr = data.growth_rate ?? 0;
+        const grEl = document.getElementById('stat-growth');
+        grEl.textContent = `${gr > 0 ? '+' : ''}${gr}%`;
+        grEl.className = 'stat-value ' + (gr > 0 ? 'trend-up' : gr < 0 ? 'trend-down' : 'trend-flat');
+
+        // Trend
+        const trend = data.trend ?? 'no data';
+        const trendEl = document.getElementById('ins-trend');
+        const arrow = trend === 'increasing' ? '↑' : trend === 'decreasing' ? '↓' : '→';
+        trendEl.textContent = `${arrow} ${trend}`;
+        trendEl.className = 'insight-val ' + (trend === 'increasing' ? 'trend-up' : trend === 'decreasing' ? 'trend-down' : 'trend-flat');
+
+        // Change
+        const ch = data.change ?? 0;
+        const chEl = document.getElementById('ins-change');
+        chEl.textContent = `${ch > 0 ? '+' : ''}${ch}`;
+        chEl.className = 'insight-val ' + (ch > 0 ? 'trend-up' : ch < 0 ? 'trend-down' : 'trend-flat');
+
+        document.getElementById('ins-latprev').textContent = `${data.latest_value ?? '--'} → ${data.previous_value ?? '--'}`;
+
+        // document.getElementById('raw-json').textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+        console.error('Error loading analytics:', e);
+    }
+}
+
+async function loadSparkline() {
+    try {
+        const res  = await fetch(`/analytics/series?user_id=${uid}`);
+        const data = await res.json();
+        const series = data.series || [];
+
+        const canvas = document.getElementById('sparkline');
+        const ctx    = canvas.getContext('2d');
+        canvas.width  = canvas.offsetWidth * 2;
+        canvas.height = 160;
+
+        if (series.length < 2) {
+            document.getElementById('sparkline-label').textContent = 'Not enough data for chart';
+            return;
+        }
+
+        const max = Math.max(...series);
+        const min = Math.min(...series);
+        const range = max - min || 1;
+        const pad = 10;
+        const w = canvas.width - pad * 2;
+        const h = canvas.height - pad * 2;
+
+        ctx.strokeStyle = '#818cf8';
+        ctx.lineWidth   = 2;
+        ctx.beginPath();
+        series.forEach((v, i) => {
+            const x = pad + (i / (series.length - 1)) * w;
+            const y = pad + h - ((v - min) / range) * h;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // gradient fill
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, 'rgba(129,140,248,.2)');
+        grad.addColorStop(1, 'rgba(129,140,248,0)');
+        ctx.lineTo(pad + w, pad + h);
+        ctx.lineTo(pad, pad + h);
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        document.getElementById('sparkline-label').textContent = `${series.length} data points`;
+    } catch(e) {
+        document.getElementById('sparkline-label').textContent = 'Error loading chart';
+    }
+}
+
+loadAnalytics();
+loadSparkline();
+</script>
+{% endblock %}

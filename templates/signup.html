@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - Optivance Platform{% endblock %}
+
+{% block body %}
+<div class="auth-layout">
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo-dot"></div>
+                <h2>Create an account</h2>
+                <p>Join Optivance to automate your workflow</p>
+            </div>
+            
+            {% if error %}
+            <div class="error-message">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <form method="POST" action="/signup{% if token %}?token={{ token }}{% endif %}">
+                <!-- Name Field Added -->
+                <div class="form-group">
+                    <label class="form-label" for="name">Full Name</label>
+                    <input type="text" id="name" name="name" class="form-control" placeholder="Enter your full name" required autofocus>
+                </div>
+                
+                {% if not token %}
+                <div class="form-group">
+                    <label class="form-label" for="company_name">Company Name</label>
+                    <input type="text" id="company_name" name="company_name" class="form-control" placeholder="Your Company Name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="team_name">Team Name</label>
+                    <input type="text" id="team_name" name="team_name" class="form-control" placeholder="e.g. Operations, Tech" required>
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label class="form-label" for="email">Email address</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="you@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Create a strong password" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Sign Up</button>
+            </form>
+            
+            <div class="auth-footer">
+                Already have an account? <a href="/login">Log in</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

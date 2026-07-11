@@ -1,0 +1,134 @@
+{% extends "app_layout.html" %}
+
+{% block title %}Decisions — Optivance Platform{% endblock %}
+{% block page_title %}Decisions{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+
+/* ── Layout ──────────────────────────────── */
+.page-header   { margin-bottom: 2rem; }
+.page-title    { font-size: 1.5rem; font-weight: 600; margin-bottom: .25rem; }
+.page-subtitle { color: var(--text-muted); font-size: .9rem; }
+
+/* Stat row */
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-bottom: 2rem; }
+.stat-card { padding: 1.5rem; position: relative; overflow: hidden; }
+.stat-label { font-size: .72rem; font-weight: 600; text-transform: uppercase;
+              letter-spacing: .5px; color: var(--text-muted); margin-bottom: .5rem; }
+.stat-val   { font-size: 1.75rem; font-weight: 700; }
+
+/* Action card */
+.action-card { padding: 2rem; margin-bottom: 2rem; border-left: 4px solid transparent; }
+.action-card.action-increase { border-left-color: #10b981; }
+.action-card.action-hold     { border-left-color: #f59e0b; }
+.action-card.action-decrease { border-left-color: #ef4444; }
+
+.action-badge { display: inline-flex; align-items: center; gap: 6px; padding: .35rem .85rem;
+                border-radius: 999px; font-size: .78rem; font-weight: 600; margin-bottom: 1rem; }
+.action-badge.action-increase { background: rgba(16,185,129,.12); color: #10b981; }
+.action-badge.action-hold     { background: rgba(245,158,11,.12); color: #f59e0b; }
+.action-badge.action-decrease { background: rgba(239,68,68,.12);  color: #ef4444; }
+
+.action-reason { font-size: 1rem; color: var(--text-main); line-height: 1.6; margin-bottom: 1rem; }
+.action-meta   { font-size: .8rem; color: var(--text-muted); display: flex; gap: 2rem; }
+
+/* Tasks table */
+.tasks-section { margin-bottom: 2rem; }
+.tasks-section h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; }
+.dt { width: 100%; border-collapse: collapse; }
+.dt th { text-align: left; font-size: .72rem; font-weight: 600; text-transform: uppercase;
+         letter-spacing: .5px; color: var(--text-muted); padding: .75rem 1rem;
+         border-bottom: 1px solid var(--border-color); }
+.dt td { padding: .875rem 1rem; border-bottom: 1px solid var(--border-color); font-size: .88rem; }
+.dt tr:hover td { background: rgba(255,255,255,.02); }
+
+.badge-sm { display: inline-flex; align-items: center; padding: .2rem .55rem; border-radius: 999px;
+            font-size: .7rem; font-weight: 500; }
+.badge-done    { background: rgba(16,185,129,.1);  color: #10b981; }
+.badge-pending { background: rgba(148,163,184,.1); color: #94a3b8; }
+
+.trend-up   { color: #10b981; }
+.trend-down { color: #ef4444; }
+.trend-flat { color: #f59e0b; }
+</style>
+{% endblock %}
+
+
+{% block app_content %}
+<div class="page-header">
+    <h1 class="page-title">AI Decision Engine</h1>
+    <p class="page-subtitle">Data-driven recommendations powered by your analytics — rendered server-side.</p>
+</div>
+
+<!-- ── Stat Row ──────────────────────────── -->
+<div class="stat-row">
+    <div class="card stat-card">
+        <div class="stat-label">Total / Average</div>
+        <div class="stat-val">{{ analytics.total }}</div>
+        <div style="font-size:.8rem; color:var(--text-muted); margin-top:.25rem;">
+            avg {{ analytics.average }}
+        </div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">Range</div>
+        <div class="stat-val">{{ analytics.min_value }} – {{ analytics.max_value }}</div>
+    </div>
+    <div class="card stat-card">
+        <div class="stat-label">Trend</div>
+        {% set t = analytics.trend %}
+        {% set arrow = '↑' if t == 'increasing' else ('↓' if t == 'decreasing' else '→') %}
+        {% set tc = 'trend-up' if t == 'increasing' else ('trend-down' if t == 'decreasing' else 'trend-flat') %}
+        <div class="stat-val {{ tc }}">{{ arrow }} {{ t }}</div>
+        <div style="font-size:.8rem; color:var(--text-muted); margin-top:.25rem;">
+            Growth: {{ analytics.growth_rate }}%
+        </div>
+    </div>
+</div>
+
+<!-- ── Decision Card ─────────────────────── -->
+<div class="card action-card action-{{ decision.action }}">
+    {% set icon = '📈' if decision.action == 'increase' else ('📉' if decision.action == 'decrease' else '⏸') %}
+    <div class="action-badge action-{{ decision.action }}">
+        {{ icon }} {{ decision.action | upper }}
+    </div>
+    <div class="action-reason">{{ decision.reason }}</div>
+    <div class="action-meta">
+        <span>Confidence: <strong>{{ decision.confidence | title }}</strong></span>
+        {% if decision.predicted_next %}
+        <span>Predicted Next: <strong>{{ decision.predicted_next }}</strong></span>
+        {% endif %}
+        <span>Growth: <strong>{{ decision.growth_rate }}%</strong></span>
+    </div>
+</div>
+
+<!-- ── Tasks Table ───────────────────────── -->
+<div class="card tasks-section" style="padding: 1.5rem;">
+    <h2>Your Tasks</h2>
+    {% if tasks %}
+    <table class="dt">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Due Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in tasks %}
+            <tr>
+                <td>{{ t.title }}</td>
+                <td><span class="badge-sm badge-{{ 'done' if t.status == 'done' else 'pending' }}">{{ t.status }}</span></td>
+                <td>{{ (t.priority or 'medium') | title }}</td>
+                <td>{{ t.due_date or '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: var(--text-muted); font-size: .9rem;">No tasks found for your account.</p>
+    {% endif %}
+</div>
+{% endblock %}

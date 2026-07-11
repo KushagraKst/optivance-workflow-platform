@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Optivance Platform{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* ── Tone A: Cool Navy (sidebar, header) ── */
+            --tone-a:         #0d1117;
+            --tone-a-raised:  #161b27;
+
+            /* ── Tone B: Warm Slate (content, cards) ── */
+            --tone-b:         #12172a;
+            --tone-b-raised:  #1c2236;
+            --tone-b-card:    #1e2640;
+
+            /* ── Aliases used throughout templates ── */
+            --bg-body:        var(--tone-b);
+            --bg-sidebar:     var(--tone-a);
+            --bg-card:        var(--tone-b-card);
+
+            /* ── Dual accent ── */
+            --primary:        #5b5fcf;        /* violet-indigo */
+            --primary-light:  rgba(91,95,207,0.15);
+            --accent:         #0ea5e9;        /* sky-blue */
+            --accent-light:   rgba(14,165,233,0.12);
+
+            /* ── Text ── */
+            --text-main:      #eef2ff;
+            --text-muted:     #7c8db5;
+
+            /* ── Borders: different per tone ── */
+            --border-color:   #252f48;
+            --border-a:       #1e2535;        /* subtler on dark sidebar */
+
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --transition: all 0.2s ease;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        /* Global UI elements */
+        .btn {
+            display: inline-flex; justify-content: center; align-items: center;
+            padding: 0.5rem 1rem; border-radius: var(--radius-md);
+            font-weight: 500; font-size: 0.85rem; cursor: pointer;
+            transition: var(--transition); border: 1px solid transparent;
+            font-family: inherit; text-decoration: none;
+        }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary:hover { background-color: #4338ca; }
+        .btn-outline { background-color: transparent; border-color: var(--border-color); color: var(--text-main); }
+        .btn-outline:hover { background-color: rgba(255,255,255,0.05); }
+
+        /* Auth Layout Specifics - keeping them here so login/signup continue working */
+        .auth-layout {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; width: 100%;
+            background: radial-gradient(circle at top right, #111827, #0b0f19);
+        }
+        .auth-wrapper { width: 100%; display: flex; justify-content: center; padding: 1rem; }
+        .auth-card {
+            background: var(--bg-card); border-radius: var(--radius-xl);
+            width: 100%; max-width: 400px; padding: 3rem 2.5rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+        }
+        .auth-header { text-align: center; margin-bottom: 2.5rem; }
+        .auth-logo-dot {
+            width: 40px; height: 40px; margin: 0 auto 1.5rem;
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            border-radius: 12px; transform: rotate(45deg);
+        }
+        .auth-header h2 { font-size: 1.75rem; margin-bottom: 0.5rem; font-weight: 600; }
+        .auth-header p { color: var(--text-muted); font-size: 0.95rem; }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-muted); }
+        .form-control {
+            width: 100%; padding: 0.875rem 1.25rem;
+            background: #111623; border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); color: var(--text-main);
+            font-family: inherit; font-size: 0.95rem; transition: var(--transition);
+        }
+        .form-control:focus { outline: none; border-color: var(--primary); }
+        .btn-block { width: 100%; padding: 0.875rem; font-size: 1rem; margin-top: 1rem; }
+        .auth-footer { margin-top: 2rem; text-align: center; font-size: 0.875rem; color: var(--text-muted); }
+        .auth-footer a { color: var(--primary); text-decoration: none; font-weight: 500; }
+        .auth-footer a:hover { text-decoration: underline; }
+        .error-message {
+            color: #ef4444; background: rgba(239, 68, 68, 0.1);
+            padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem;
+            border: 1px solid rgba(239, 68, 68, 0.2); font-size: 0.875rem; text-align: center;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% block body %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,277 @@
+{% extends "app_layout.html" %}
+
+{% block title %}AI Assistant - Optivance Platform{% endblock %}
+{% block page_title %}AI Assistant{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+    .page-header { margin-bottom: 2rem; }
+    .page-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .page-subtitle { color: var(--text-muted); font-size: 0.9rem; }
+    
+    .assistant-container { display: grid; grid-template-columns: 1fr 320px; gap: 1.5rem; height: calc(100vh - 200px); }
+    
+    /* Chat Area */
+    .chat-card { display: flex; flex-direction: column; height: 100%; position: relative; }
+    .chat-header {
+        padding: 1.5rem; border-bottom: 1px solid var(--border-color);
+        display: flex; align-items: center; gap: 12px;
+    }
+    .bot-avatar {
+        width: 40px; height: 40px; border-radius: 10px;
+        background: linear-gradient(135deg, #38bdf8, #818cf8);
+        display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+    }
+    .bot-info { display: flex; flex-direction: column; }
+    .bot-name { font-weight: 600; font-size: 1rem; }
+    .bot-status { font-size: 0.75rem; color: #10b981; display: flex; align-items: center; gap: 4px; }
+    .bot-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
+    
+    .chat-messages { padding: 1.5rem; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; }
+    .message { display: flex; gap: 12px; max-width: 85%; animation: msgFade .3s ease; }
+    .message.user-msg { align-self: flex-end; flex-direction: row-reverse; }
+    .message-avatar { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; display: flex;
+        align-items: center; justify-content: center; font-size: .8rem; }
+    .message .bot-msg-avatar { background: linear-gradient(135deg, #38bdf8, #818cf8); color: white; }
+    .message .user-msg-avatar { background: linear-gradient(135deg, #5b5fcf, #818cf8); color: white; }
+    .message-content { padding: 1rem 1.25rem; border-radius: 12px; line-height: 1.6; font-size: 0.9rem;
+        white-space: pre-wrap; word-wrap: break-word; }
+    .message:not(.user-msg) .message-content { background: #1e263c; border-top-left-radius: 0; }
+    .message.user-msg .message-content { background: rgba(91,95,207,.2); border: 1px solid rgba(91,95,207,.3);
+        border-top-right-radius: 0; }
+    .message-content strong { color: #a5b4fc; font-weight: 600; }
+    .message-time { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.4rem; }
+    .message.user-msg .message-time { text-align: right; }
+    
+    /* Typing indicator */
+    .typing-indicator { display: flex; gap: 4px; padding: 1rem 1.25rem; align-items: center; }
+    .typing-dot { width: 8px; height: 8px; border-radius: 50%; background: #818cf8;
+        animation: typingBounce .6s ease-in-out infinite; }
+    .typing-dot:nth-child(2) { animation-delay: .15s; }
+    .typing-dot:nth-child(3) { animation-delay: .3s; }
+
+    @keyframes typingBounce {
+        0%, 100% { opacity: .3; transform: translateY(0); }
+        50% { opacity: 1; transform: translateY(-4px); }
+    }
+    @keyframes msgFade {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    
+    .chat-input-container { padding: 1.5rem; border-top: 1px solid var(--border-color); }
+    .chat-input-wrapper { display: flex; gap: 12px; }
+    .chat-input {
+        flex: 1; background: #1e263c; border: 1px solid var(--border-color);
+        border-radius: var(--radius-md); padding: 0.875rem 1.25rem; color: var(--text-main);
+        font-family: inherit; font-size: 0.9rem; outline: none; transition: var(--transition);
+    }
+    .chat-input:focus { border-color: var(--primary); }
+    .chat-input:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-send {
+        background: var(--primary); color: white; width: 48px; height: 48px;
+        border-radius: var(--radius-md); border: none; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+        transition: var(--transition); flex-shrink: 0;
+    }
+    .btn-send:hover { background: #4338ca; }
+    .btn-send:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Sidebars */
+    .side-panels { display: flex; flex-direction: column; gap: 1.5rem; }
+    .side-card { padding: 1.5rem; }
+    .side-card-title { font-weight: 600; margin-bottom: 1rem; font-size: 1rem; }
+    
+    .quick-questions { display: flex; flex-direction: column; gap: 0.75rem; }
+    .qq-item {
+        background: #1e263c; border: 1px solid var(--border-color); padding: 0.875rem 1rem;
+        border-radius: var(--radius-md); font-size: 0.85rem; color: var(--text-muted);
+        cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 10px;
+    }
+    .qq-item:hover { color: var(--text-main); border-color: #3b82f6; background: rgba(59, 130, 246, 0.05); transform: translateX(4px); }
+    
+    .capabilities-list { display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.85rem; color: var(--text-muted); }
+    .capabilities-list li { display: flex; align-items: center; gap: 8px; }
+    .capabilities-list li::before { content: '✦'; color: #818cf8; font-size: 0.7rem; }
+</style>
+{% endblock %}
+
+{% block app_content %}
+<div class="page-header">
+    <h1 class="page-title">AI Assistant</h1>
+    <p class="page-subtitle">Ask anything about your tasks, analytics, or business operations.</p>
+</div>
+
+<div class="assistant-container">
+    <div class="card chat-card">
+        <div class="chat-header">
+            <div class="bot-avatar"><i class="fa-solid fa-robot"></i></div>
+            <div class="bot-info">
+                <div class="bot-name">Optivance AI</div>
+                <div class="bot-status">Online</div>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chat-messages">
+            <div class="message">
+                <div class="message-avatar bot-msg-avatar"><i class="fa-solid fa-robot"></i></div>
+                <div>
+                    <div class="message-content">Hello! 👋 I'm your Optivance AI assistant. I can help you with:
+
+• **Task queries** — status, counts, priorities
+• **Analytics** — data insights & trends
+• **Decisions** — AI recommendations
+• **Team info** — your role & team details
+• **Productivity tips** — optimization advice
+
+What can I help you with today?</div>
+                    <div class="message-time">Just now</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <input type="text" class="chat-input" id="chat-input" placeholder="Ask me anything about your operations..." autocomplete="off">
+                <button class="btn-send" id="btn-send" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="side-panels">
+        <div class="card side-card">
+            <div class="side-card-title">Quick Questions</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Click to ask instantly:</div>
+            <div class="quick-questions">
+                <div class="qq-item" onclick="askQuick(this)">📋 How many tasks do I have?</div>
+                <div class="qq-item" onclick="askQuick(this)">🔴 Show high priority tasks</div>
+                <div class="qq-item" onclick="askQuick(this)">📊 What's my analytics summary?</div>
+                <div class="qq-item" onclick="askQuick(this)">🧠 What does the AI recommend?</div>
+                <div class="qq-item" onclick="askQuick(this)">👤 Tell me about my team</div>
+                <div class="qq-item" onclick="askQuick(this)">🚀 How to improve productivity?</div>
+            </div>
+        </div>
+        
+        <div class="card side-card">
+            <div class="side-card-title">Bot Capabilities</div>
+            <ul class="capabilities-list" style="list-style: none;">
+                <li>Task & workflow queries</li>
+                <li>Business insights & tips</li>
+                <li>Process optimization advice</li>
+                <li>Platform how-to guidance</li>
+                <li>Analytics interpretation</li>
+                <li>AI decision explanation</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+const chatMessages = document.getElementById('chat-messages');
+const chatInput    = document.getElementById('chat-input');
+const btnSend      = document.getElementById('btn-send');
+let   isSending    = false;
+
+function getTime() {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatMarkdown(text) {
+    // Bold: **text** → <strong>text</strong>
+    return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
+function addMessage(content, isUser) {
+    const msg = document.createElement('div');
+    msg.className = 'message' + (isUser ? ' user-msg' : '');
+    
+    const avatarClass = isUser ? 'user-msg-avatar' : 'bot-msg-avatar';
+    const avatarIcon  = isUser ? 'fa-user' : 'fa-robot';
+    
+    msg.innerHTML = `
+        <div class="message-avatar ${avatarClass}"><i class="fa-solid ${avatarIcon}"></i></div>
+        <div>
+            <div class="message-content">${formatMarkdown(content)}</div>
+            <div class="message-time">${getTime()}</div>
+        </div>`;
+    chatMessages.appendChild(msg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function showTyping() {
+    const el = document.createElement('div');
+    el.className = 'message';
+    el.id = 'typing-msg';
+    el.innerHTML = `
+        <div class="message-avatar bot-msg-avatar"><i class="fa-solid fa-robot"></i></div>
+        <div class="typing-indicator">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+        </div>`;
+    chatMessages.appendChild(el);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function hideTyping() {
+    const el = document.getElementById('typing-msg');
+    if (el) el.remove();
+}
+
+function setDisabled(state) {
+    isSending = state;
+    chatInput.disabled = state;
+    btnSend.disabled   = state;
+}
+
+async function sendMessage() {
+    const question = chatInput.value.trim();
+    if (!question || isSending) return;
+
+    addMessage(question, true);
+    chatInput.value = '';
+    setDisabled(true);
+    showTyping();
+
+    try {
+        const res = await fetch('/api/assistant/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question })
+        });
+        const data = await res.json();
+        hideTyping();
+
+        if (data.answer) {
+            addMessage(data.answer, false);
+        } else {
+            addMessage('Sorry, I encountered an error. Please try again.', false);
+        }
+    } catch (e) {
+        hideTyping();
+        addMessage('⚠️ Network error. Please make sure the server is running.', false);
+    }
+    setDisabled(false);
+    chatInput.focus();
+}
+
+function askQuick(el) {
+    // Strip emoji prefix for cleaner query
+    const text = el.textContent.replace(/^[^\w]*/, '').trim();
+    chatInput.value = text;
+    sendMessage();
+}
+
+// Enter key to send
+chatInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// Auto-focus input
+chatInput.focus();
+</script>
+{% endblock %}
